@@ -1,219 +1,115 @@
-# Dynamic Agents for OpenHands
+# OpenHands Dynamic Agents
 
-A powerful extension for OpenHands that enables dynamic agent generation and intelligent code analysis through natural language processing.
+Dynamic Agents extension for the OpenHands AI Framework.
 
-## Overview
+## System Requirements
 
-This module provides a flexible system for generating specialized agents at runtime, allowing OpenHands to adapt to different technologies and requirements through natural language prompts.
+- Linux-based operating system (Debian/Ubuntu recommended)
+- Python 3.10 or higher
+- 4GB RAM minimum (8GB recommended)
+- 10GB free disk space
+- Root/sudo access for system service installation
 
-## Features
+### Software Dependencies
 
-### Core Capabilities
+The installation script will automatically install these dependencies:
+- git
+- python3-pip
+- python3-venv
+- build-essential
+- python3-dev
+- curl
+- python3-wheel
+- Poetry (package manager)
 
-- **Natural Language Processing**
-  - Process free-form prompts
-  - Intelligent intent detection
-  - Context-aware analysis
-  - Multi-technology support
+### Python Package Dependencies
 
-- **Dynamic Agent Generation**
-  - Template-based generation
-  - LLM-powered customization
-  - Automatic capability detection
-  - Extension system
-
-- **Advanced Analysis**
-  - Technology stack detection
-  - Framework identification
-  - Security vulnerability scanning
-  - Performance optimization
-  - Code quality assessment
-
-- **Interactive Visualization**
-  - Technology stack visualization
-  - Performance metrics
-  - Dependency graphs
-  - Real-time monitoring
-
-### Integration
-
-- Seamless OpenHands integration
-- Template-based generation
-- Extension system
-- Real-time monitoring
-- Custom dashboards
+Key Python packages (automatically installed):
+- numpy >= 1.26.4
+- pandas >= 2.1.3
+- torch >= 2.2.1
+- torchvision >= 0.17.1
+- dash >= 2.0.0
+- plotly >= 5.0.0
+- fastapi >= 0.104.0
+- uvicorn >= 0.24.0
+- pydantic >= 2.6.1
+- python-frontmatter >= 1.1.0
+- pyyaml >= 6.0.1
 
 ## Installation
 
+1. Clone this repository:
 ```bash
-pip install openhands-dynamic-agents
+git clone https://github.com/makafeli/Dynamic-Agents-OpenHands.git
+cd Dynamic-Agents-OpenHands
 ```
 
-## Quick Start
-
-### Natural Language Processing
-
-```python
-from openhands_dynamic_agents import DynamicAgent
-from openhands_dynamic_agents.core.prompt_processor import PromptProcessor
-
-# Initialize
-processor = PromptProcessor()
-agent = DynamicAgent("smart_agent")
-
-# Process natural language prompt
-result = processor.process(
-    "Analyze this Python Django code for security vulnerabilities "
-    "and optimize database queries"
-)
-
-if result.success:
-    intent = result.data
-    print(f"Action: {intent.action}")
-    print(f"Technologies: {intent.technologies}")
-    print(f"Focus Areas: {intent.focus_areas}")
-```
-
-### Interactive Analysis
-
-```python
-from openhands_dynamic_agents.dashboard import Dashboard
-
-# Start dashboard
-dashboard = Dashboard(port=8080)
-dashboard.start()
-
-# Process analysis with visualization
-result = agent.analyze_with_viz(
-    code="your_code_here",
-    focus=["security", "performance"]
-)
-
-# Update dashboard
-dashboard.update_data(result)
-```
-
-### CLI Usage
-
+2. Make the installation script executable:
 ```bash
-# Process natural language prompt
-agents process "Analyze this Python code for security issues"
-
-# Analyze repository with visualization
-agents analyze repo . --visualize --output analysis.html
-
-# Start interactive dashboard
-agents dashboard --port 8080 --theme dark
-
-# Watch repository for changes
-agents watch /path/to/repo --focus "security,performance"
+chmod +x scripts/install_openhands.sh
 ```
 
-## Advanced Usage
-
-### Custom Extensions
-
-```python
-from openhands_dynamic_agents.extensions import Extension
-
-class SecurityExtension(Extension):
-    """Custom security analysis extension."""
-    
-    async def analyze(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        # Implement security analysis
-        return {
-            "vulnerabilities": self._scan_vulnerabilities(data),
-            "security_score": self._calculate_score(data)
-        }
-
-# Use extension
-agent = DynamicAgent("security_agent")
-agent.add_extension(SecurityExtension())
+3. Run the installation script with sudo:
+```bash
+sudo ./scripts/install_openhands.sh
 ```
 
-### Visualization Customization
+The installation script will:
+- Set up the required system dependencies
+- Install Python packages
+- Clone and configure OpenHands
+- Set up the Dynamic Agents extension
+- Configure and start the dashboard service
 
-```python
-from openhands_dynamic_agents.dashboard import DashboardVisualizer
+## Dashboard
 
-# Create custom visualization
-visualizer = DashboardVisualizer(theme="dark")
-tech_viz = visualizer.create_tech_stack_visualization(results)
-dashboard.add_visualization("tech_stack", tech_viz)
+The dashboard service runs on port 8080 by default and can be accessed at:
+```
+http://localhost:8080
 ```
 
-### Advanced Analysis
+### Managing the Dashboard Service
 
-```python
-# Comprehensive analysis
-result = await agent.process_prompt("""
-    Analyze the Python code in /path/to/repo:
-    - Check for security vulnerabilities
-    - Optimize performance
-    - Ensure code quality
-    - Suggest improvements
-    Focus on Django best practices
-""")
-
-# Access results
-security = result["analysis"]["security"]
-performance = result["analysis"]["performance"]
-quality = result["analysis"]["quality"]
-
-# Get recommendations
-for rec in result["recommendations"]:
-    print(f"- {rec}")
+Check service status:
+```bash
+sudo systemctl status openhands-dashboard
 ```
 
-## Configuration
-
-### Environment Variables
-
-- `OPENHANDS_DATA_DIR`: Base directory for data storage
-- `OPENHANDS_LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
-- `OPENHANDS_DASHBOARD_HOST`: Default dashboard host
-- `OPENHANDS_DASHBOARD_PORT`: Default dashboard port
-
-### Configuration File
-
-Create `~/.config/openhands/config.yaml`:
-
-```yaml
-data_dir: /path/to/data
-log_level: INFO
-dashboard:
-  host: localhost
-  port: 8000
-analysis:
-  max_files: 1000
-  ignore_patterns:
-    - "node_modules/"
-    - "venv/"
+View logs:
+```bash
+sudo journalctl -u openhands-dashboard -f
 ```
 
-## Development
+Restart the service:
+```bash
+sudo systemctl restart openhands-dashboard
+```
 
-1. Clone the repository
-2. Install dependencies:
-   ```bash
-   poetry install
-   ```
-3. Run tests:
-   ```bash
-   poetry run pytest
-   ```
+## Uninstallation
 
-## Contributing
+To remove OpenHands and Dynamic Agents:
+```bash
+sudo /opt/openhands/uninstall.sh
+```
 
-Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+## Project Structure
 
-## Documentation
-
-- [CLI Reference](docs/cli.md)
-- [API Documentation](docs/api.md)
-- [Extension System](docs/extensions.md)
-- [Visualization Guide](docs/visualization.md)
+```
+Dynamic-Agents-OpenHands/
+├── docs/               # Documentation
+├── examples/           # Example usage
+├── scripts/           # Installation and utility scripts
+├── src/               # Source code
+│   └── openhands_dynamic_agents/
+│       ├── analysis/      # Analysis tools
+│       ├── core/          # Core functionality
+│       ├── dashboard/     # Web dashboard
+│       ├── templates/     # Template files
+│       └── utils/         # Utility functions
+└── tests/             # Test files
+```
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+[Add your license information here]
