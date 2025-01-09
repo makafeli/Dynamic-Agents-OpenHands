@@ -175,37 +175,43 @@ check_success "Lock file generated" "Failed to generate lock file"
 poetry install
 check_success "Dynamic-Agents dependencies installed" "Failed to install Dynamic-Agents dependencies"
 
-# Create systemd service
-print_status "Creating dashboard service..."
-cat > /etc/systemd/system/openhands-dashboard.service << 'EOL'
-[Unit]
-Description=OpenHands Dynamic Agents Dashboard
-After=network.target
-
-[Service]
-Type=simple
-User=root
-WorkingDirectory=/opt/openhands/Dynamic-Agents-OpenHands
-Environment=PATH=/opt/openhands/Dynamic-Agents-OpenHands/.venv/bin:/usr/local/bin:/usr/bin:/bin
-Environment=PYTHONPATH=/opt/openhands/Dynamic-Agents-OpenHands/src:/opt/openhands/OpenHands
-Environment=VIRTUAL_ENV=/opt/openhands/Dynamic-Agents-OpenHands/.venv
-ExecStart=/bin/bash -c 'cd /opt/openhands/Dynamic-Agents-OpenHands && source .venv/bin/activate && python3 -c "from openhands_dynamic_agents.dashboard.app import Dashboard; Dashboard(host=\"0.0.0.0\", port=8080).start()"'
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
+# Create start script
+print_status "Creating start script..."
+cat > start_dashboard.sh << 'EOL'
+#!/bin/bash
+cd /opt/openhands/Dynamic-Agents-OpenHands
+source .venv/bin/activate
+nohup python3 -c "from openhands_dynamic_agents.dashboard.app import Dashboard; Dashboard(host='0.0.0.0', port=8080).start()" > dashboard.log 2>&1 &
+echo $! > dashboard.pid
+echo "Dashboard started in background. PID: $(cat dashboard.pid)"
+echo "Access the dashboard at http://$(hostname -I | awk '{print $1}'):8080"
+echo "View logs with: tail -f dashboard.log"
 EOL
 
-# Reload systemd
-print_status "Reloading systemd..."
-systemctl daemon-reload
+chmod +x start_dashboard.sh
+check_success "Start script created" "Failed to create start script"
 
-# Enable and start dashboard service
-print_status "Starting dashboard service..."
-systemctl enable openhands-dashboard
-systemctl start openhands-dashboard
-check_success "Dashboard service started" "Failed to start dashboard service"
+# Create stop script
+print_status "Creating stop script..."
+cat > stop_dashboard.sh << 'EOL'
+#!/bin/bash
+if [ -f dashboard.pid ]; then
+    PID=$(cat dashboard.pid)
+    kill $PID
+    rm dashboard.pid
+    echo "Dashboard stopped"
+else
+    echo "Dashboard PID file not found"
+fi
+EOL
+
+chmod +x stop_dashboard.sh
+check_success "Stop script created" "Failed to create stop script"
+
+# Start the dashboard
+print_status "Starting dashboard..."
+./start_dashboard.sh
+check_success "Dashboard started" "Failed to start dashboard"
 
 # Print installation summary
 print_success "Installation completed successfully!"
@@ -216,15 +222,17 @@ echo -e "Dynamic Agents: ${GREEN}Installed${NC}"
 echo -e "Dashboard: ${GREEN}Running${NC}"
 echo -e "\nDashboard URL: http://$(hostname -I | awk '{print $1}'):8080"
 echo -e "\nUseful commands:"
-echo -e "- Check dashboard status: ${YELLOW}systemctl status openhands-dashboard${NC}"
-echo -e "- View dashboard logs: ${YELLOW}journalctl -u openhands-dashboard -f${NC}"
+echo -e "- Start dashboard: ${YELLOW}/opt/openhands/Dynamic-Agents-OpenHands/start_dashboard.sh${NC}"
+echo -e "- Stop dashboard: ${YELLOW}/opt/openhands/Dynamic-Agents-OpenHands/stop_dashboard.sh${NC}"
+echo -e "- View dashboard logs: ${YELLOW}tail -f /opt/openhands/Dynamic-Agents-OpenHands/dashboard.log${NC}"
 
 # Create uninstall script
 cat > uninstall.sh << 'EOL'
 #!/bin/bash
-systemctl stop openhands-dashboard
-systemctl disable openhands-dashboard
-rm /etc/systemd/system/openhands-dashboard.service
+# Stop the dashboard if running
+if [ -f /opt/openhands/Dynamic-Agents-OpenHands/dashboard.pid ]; then
+    /opt/openhands/Dynamic-Agents-OpenHands/stop_dashboard.sh
+fi
 rm -rf /opt/openhands
 echo "OpenHands and Dynamic Agents uninstalled successfully"
 EOL
