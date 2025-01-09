@@ -1,19 +1,47 @@
 # Dynamic Agents for OpenHands
 
-A modular extension for OpenHands that enables dynamic agent generation based on technology keywords.
+A powerful extension for OpenHands that enables dynamic agent generation and intelligent code analysis through natural language processing.
 
 ## Overview
 
-This module provides a flexible system for generating specialized agents at runtime, allowing OpenHands to adapt to different technologies and requirements without requiring a fork of the main repository.
+This module provides a flexible system for generating specialized agents at runtime, allowing OpenHands to adapt to different technologies and requirements through natural language prompts.
 
 ## Features
 
-- Dynamic agent generation using LLM
-- Technology keyword management
-- Template-based agent generation
-- Seamless integration with OpenHands runtime
-- Performance monitoring and error handling
-- Extensible template system
+### Core Capabilities
+
+- **Natural Language Processing**
+  - Process free-form prompts
+  - Intelligent intent detection
+  - Context-aware analysis
+  - Multi-technology support
+
+- **Dynamic Agent Generation**
+  - Template-based generation
+  - LLM-powered customization
+  - Automatic capability detection
+  - Extension system
+
+- **Advanced Analysis**
+  - Technology stack detection
+  - Framework identification
+  - Security vulnerability scanning
+  - Performance optimization
+  - Code quality assessment
+
+- **Interactive Visualization**
+  - Technology stack visualization
+  - Performance metrics
+  - Dependency graphs
+  - Real-time monitoring
+
+### Integration
+
+- Seamless OpenHands integration
+- Template-based generation
+- Extension system
+- Real-time monitoring
+- Custom dashboards
 
 ## Installation
 
@@ -21,77 +49,147 @@ This module provides a flexible system for generating specialized agents at runt
 pip install openhands-dynamic-agents
 ```
 
-## Usage
+## Quick Start
+
+### Natural Language Processing
 
 ```python
 from openhands_dynamic_agents import DynamicAgent
+from openhands_dynamic_agents.core.prompt_processor import PromptProcessor
 
-# Create a dynamic agent for Python analysis
-agent = DynamicAgent(
-    name="python_analyzer",
-    keyword="python",
-    options={
-        "analysis_type": "security",
-        "max_code_length": 5000
-    }
+# Initialize
+processor = PromptProcessor()
+agent = DynamicAgent("smart_agent")
+
+# Process natural language prompt
+result = processor.process(
+    "Analyze this Python Django code for security vulnerabilities "
+    "and optimize database queries"
 )
 
-# Run the agent
-result = agent.run({
-    "code_snippet": "def hello(): print('world')",
-    "analysis_type": "security"
-})
+if result.success:
+    intent = result.data
+    print(f"Action: {intent.action}")
+    print(f"Technologies: {intent.technologies}")
+    print(f"Focus Areas: {intent.focus_areas}")
 ```
 
-## Integration with OpenHands
+### Interactive Analysis
 
-The module integrates seamlessly with OpenHands by extending its microagent system:
+```python
+from openhands_dynamic_agents.dashboard import Dashboard
 
-1. Dynamic agents inherit from `BaseMicroAgent`
-2. Agents are generated with proper metadata and type information
-3. Generated agents follow OpenHands conventions and patterns
+# Start dashboard
+dashboard = Dashboard(port=8080)
+dashboard.start()
 
-## Architecture
+# Process analysis with visualization
+result = agent.analyze_with_viz(
+    code="your_code_here",
+    focus=["security", "performance"]
+)
 
-### Core Components
+# Update dashboard
+dashboard.update_data(result)
+```
 
-1. **DynamicAgent**: Main class that integrates with OpenHands' microagent system
-   - Handles agent lifecycle
-   - Manages generation and execution
-   - Provides error handling and validation
+### CLI Usage
 
-2. **LLMAgentFactory**: Generates agent implementations using LLM
-   - Template-based generation
-   - Code validation
-   - Dynamic loading
+```bash
+# Process natural language prompt
+agents process "Analyze this Python code for security issues"
 
-3. **KeywordManager**: Manages technology keywords
-   - Keyword validation
-   - State management
-   - Agent tracking
+# Analyze repository with visualization
+agents analyze repo . --visualize --output analysis.html
 
-### Utils
+# Start interactive dashboard
+agents dashboard --port 8080 --theme dark
 
-1. **Result Types**: Generic result handling
-   - Operation results
-   - Error information
-   - Metadata tracking
+# Watch repository for changes
+agents watch /path/to/repo --focus "security,performance"
+```
 
-2. **Monitoring**: Performance tracking
-   - Operation timing
-   - Success/failure logging
-   - Detailed metrics
+## Advanced Usage
 
-3. **Validation**: Input validation
-   - Schema validation
-   - Type checking
-   - Custom rules
+### Custom Extensions
 
-### Templates
+```python
+from openhands_dynamic_agents.extensions import Extension
 
-- Predefined templates for common technologies
-- Customizable template system
-- Version management
+class SecurityExtension(Extension):
+    """Custom security analysis extension."""
+    
+    async def analyze(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        # Implement security analysis
+        return {
+            "vulnerabilities": self._scan_vulnerabilities(data),
+            "security_score": self._calculate_score(data)
+        }
+
+# Use extension
+agent = DynamicAgent("security_agent")
+agent.add_extension(SecurityExtension())
+```
+
+### Visualization Customization
+
+```python
+from openhands_dynamic_agents.dashboard import DashboardVisualizer
+
+# Create custom visualization
+visualizer = DashboardVisualizer(theme="dark")
+tech_viz = visualizer.create_tech_stack_visualization(results)
+dashboard.add_visualization("tech_stack", tech_viz)
+```
+
+### Advanced Analysis
+
+```python
+# Comprehensive analysis
+result = await agent.process_prompt("""
+    Analyze the Python code in /path/to/repo:
+    - Check for security vulnerabilities
+    - Optimize performance
+    - Ensure code quality
+    - Suggest improvements
+    Focus on Django best practices
+""")
+
+# Access results
+security = result["analysis"]["security"]
+performance = result["analysis"]["performance"]
+quality = result["analysis"]["quality"]
+
+# Get recommendations
+for rec in result["recommendations"]:
+    print(f"- {rec}")
+```
+
+## Configuration
+
+### Environment Variables
+
+- `OPENHANDS_DATA_DIR`: Base directory for data storage
+- `OPENHANDS_LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
+- `OPENHANDS_DASHBOARD_HOST`: Default dashboard host
+- `OPENHANDS_DASHBOARD_PORT`: Default dashboard port
+
+### Configuration File
+
+Create `~/.config/openhands/config.yaml`:
+
+```yaml
+data_dir: /path/to/data
+log_level: INFO
+dashboard:
+  host: localhost
+  port: 8000
+analysis:
+  max_files: 1000
+  ignore_patterns:
+    - "node_modules/"
+    - "venv/"
+```
 
 ## Development
 
@@ -107,8 +205,15 @@ The module integrates seamlessly with OpenHands by extending its microagent syst
 
 ## Contributing
 
-Contributions are welcome! Please see our contributing guidelines for more details.
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+## Documentation
+
+- [CLI Reference](docs/cli.md)
+- [API Documentation](docs/api.md)
+- [Extension System](docs/extensions.md)
+- [Visualization Guide](docs/visualization.md)
 
 ## License
 
-MIT License - see LICENSE file for details.
+MIT License - see [LICENSE](LICENSE) file for details.
