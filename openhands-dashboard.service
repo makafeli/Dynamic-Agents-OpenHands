@@ -1,0 +1,13 @@
+[Unit]
+Description=OpenHands Dynamic Agents Dashboard
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/openhands/Dynamic-Agents-OpenHands
+ExecStart=/bin/bash -c 'source /opt/openhands/Dynamic-Agents-OpenHands/venv/bin/activate && python3 -m openhands_dynamic_agents.dashboard.app'
+Restart=always
+User=root
+
+[Install]
+WantedBy=multi-user.target
