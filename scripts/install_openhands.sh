@@ -187,7 +187,7 @@ def test_openhands():
     
     # Initialize components
     processor = PromptProcessor()
-    agent = DynamicAgent("test_agent")
+    agent = DynamicAgent("test_agent", keyword="python")  # Added required keyword parameter
     analyzer = TechStackAnalyzer()
     
     print("✓ Successfully imported OpenHands components")
@@ -197,9 +197,9 @@ def test_openhands():
     print("2. Import components:")
     print("   from openhands_dynamic_agents import DynamicAgent, TechStackAnalyzer")
     print("3. Create an agent:")
-    print("   agent = DynamicAgent(\"my_agent\")")
+    print("   agent = DynamicAgent(\"my_agent\", keyword=\"python\")")
     print("4. Process prompts:")
-    print("   result = agent.process_prompt(\"Analyze this code for security issues...\")")
+    print("   result = agent.run({\"code\": \"def example(): pass\"})")
 
 if __name__ == "__main__":
     test_openhands()
