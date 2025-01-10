@@ -175,6 +175,49 @@ check_success "Lock file generated" "Failed to generate lock file"
 poetry install
 check_success "Dynamic-Agents dependencies installed" "Failed to install Dynamic-Agents dependencies"
 
+# Create OpenHands test script
+print_status "Creating OpenHands test script..."
+cat > test_openhands.py << 'EOL'
+#!/usr/bin/env python3
+from openhands_dynamic_agents import DynamicAgent, TechStackAnalyzer
+from openhands_dynamic_agents.core.prompt_processor import PromptProcessor
+
+def test_openhands():
+    print("Testing OpenHands installation...")
+    
+    # Initialize components
+    processor = PromptProcessor()
+    agent = DynamicAgent("test_agent")
+    analyzer = TechStackAnalyzer()
+    
+    print("✓ Successfully imported OpenHands components")
+    print("✓ OpenHands is ready to use")
+    print("\nExample usage:")
+    print("1. Start a Python shell: python3")
+    print("2. Import components:")
+    print("   from openhands_dynamic_agents import DynamicAgent, TechStackAnalyzer")
+    print("3. Create an agent:")
+    print("   agent = DynamicAgent(\"my_agent\")")
+    print("4. Process prompts:")
+    print("   result = agent.process_prompt(\"Analyze this code for security issues...\")")
+
+if __name__ == "__main__":
+    test_openhands()
+
+EOL
+
+# Add test script to PATH
+ln -s /opt/openhands/Dynamic-Agents-OpenHands/test_openhands.py /usr/local/bin/test-openhands
+chmod +x /usr/local/bin/test-openhands
+
+chmod +x test_openhands.py
+check_success "OpenHands test script created" "Failed to create test script"
+
+# Run the test script
+print_status "Testing OpenHands installation..."
+python3 test_openhands.py
+check_success "OpenHands test completed" "OpenHands test failed"
+
 # Create start script
 print_status "Creating start script..."
 cat > start_dashboard.sh << 'EOL'
@@ -222,9 +265,16 @@ echo -e "Dynamic Agents: ${GREEN}Installed${NC}"
 echo -e "Dashboard: ${GREEN}Running${NC}"
 echo -e "\nDashboard URL: http://$(hostname -I | awk '{print $1}'):8080"
 echo -e "\nUseful commands:"
+echo -e "- Test OpenHands: ${YELLOW}test-openhands${NC}"
 echo -e "- Start dashboard: ${YELLOW}/opt/openhands/Dynamic-Agents-OpenHands/start_dashboard.sh${NC}"
 echo -e "- Stop dashboard: ${YELLOW}/opt/openhands/Dynamic-Agents-OpenHands/stop_dashboard.sh${NC}"
 echo -e "- View dashboard logs: ${YELLOW}tail -f /opt/openhands/Dynamic-Agents-OpenHands/dashboard.log${NC}"
+echo -e "\nTo use OpenHands in Python:"
+echo -e "1. Activate the virtual environment:"
+echo -e "   ${YELLOW}source /opt/openhands/Dynamic-Agents-OpenHands/.venv/bin/activate${NC}"
+echo -e "2. Start Python and import OpenHands:"
+echo -e "   ${YELLOW}python3${NC}"
+echo -e "   ${YELLOW}from openhands_dynamic_agents import DynamicAgent, TechStackAnalyzer${NC}"
 
 # Create uninstall script
 cat > uninstall.sh << 'EOL'
