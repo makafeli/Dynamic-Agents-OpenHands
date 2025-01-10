@@ -52,8 +52,6 @@ REQUIRED_PACKAGES=(
     "python3-dev"
     "netcat-traditional"  # Debian-specific netcat package
     "curl"
-    "nodejs"
-    "npm"
 )
 
 # Check and install missing packages
@@ -66,15 +64,17 @@ done
 
 if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
     print_status "Installing missing packages: ${MISSING_PACKAGES[*]}"
-    # Add NodeSource repository for Node.js
-    if [[ " ${MISSING_PACKAGES[@]} " =~ " nodejs " ]]; then
-        print_status "Adding NodeSource repository..."
-        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-    fi
     apt-get update
     apt-get install -y "${MISSING_PACKAGES[@]}"
 else
     print_success "All required packages are installed"
+fi
+
+# Install Node.js and npm
+if ! command_exists node || ! command_exists npm; then
+    print_status "Installing Node.js and npm..."
+    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    apt-get install -y nodejs
 fi
 
 # Check Python version
@@ -86,68 +86,46 @@ else
     exit 1
 fi
 
-# Check/Install Poetry
+# Install Poetry
 if ! command_exists poetry; then
     print_status "Installing Poetry..."
-    curl -sSL https://install.python-poetry.org | python3 -
+    curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python3 -
+    ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry
+    poetry config virtualenvs.in-project true
 else
     print_success "Poetry is already installed"
 fi
-
-# Function to check if OpenHands is installed
-check_openhands() {
-    if [ -d "/opt/openhands/OpenHands" ]; then
-        return 0
-    else
-        return 1
-    fi
-}
-
-# Function to check if Dynamic Agents is installed
-check_dynamic_agents() {
-    if [ -d "/opt/openhands/Dynamic-Agents-OpenHands" ]; then
-        return 0
-    else
-        return 1
-    fi
-}
 
 # Create installation directory
 INSTALL_DIR="/opt/openhands"
 mkdir -p $INSTALL_DIR
 cd $INSTALL_DIR
 
-# Install OpenHands if not present
-if ! check_openhands; then
-    print_status "Installing OpenHands..."
-    git clone https://github.com/All-Hands-AI/OpenHands.git
+# Install OpenHands
+print_status "Installing OpenHands..."
+if [ -d "OpenHands" ]; then
     cd OpenHands
-    make build
+    git pull
     cd ..
 else
-    print_success "OpenHands is already installed"
+    git clone https://github.com/All-Hands-AI/OpenHands.git
 fi
 
-# Install Dynamic Agents if not present
-if ! check_dynamic_agents; then
-    print_status "Installing Dynamic Agents..."
-    git clone https://github.com/makafeli/Dynamic-Agents-OpenHands.git
-    cd Dynamic-Agents-OpenHands
-    poetry install
-    cd ..
-else
-    print_success "Dynamic Agents is already installed"
-fi
-
-# Configure integration
-print_status "Configuring integration..."
 cd OpenHands
 
-# Update configuration
+# Create non-interactive config
+print_status "Creating OpenHands configuration..."
 cat > config.toml << 'EOL'
 [server]
 host = "0.0.0.0"
 port = 3000
+
+[workspace]
+directory = "./workspace"
+
+[llm]
+model = "gpt-4"
+api_key = ""  # Will be prompted during first run
 
 [extensions]
 enabled = ["dynamic-agents"]
@@ -158,13 +136,40 @@ dashboard_route = "/dashboard"
 api_route = "/api"
 EOL
 
-print_status "Setting up OpenHands configuration..."
-make setup-config
+# Build OpenHands
+print_status "Building OpenHands..."
+poetry install
+npm install
+npm run build
 
-print_success "Installation and configuration completed successfully!"
+cd ..
+
+# Install Dynamic Agents
+print_status "Installing Dynamic Agents..."
+if [ -d "Dynamic-Agents-OpenHands" ]; then
+    cd Dynamic-Agents-OpenHands
+    git pull
+else
+    git clone https://github.com/makafeli/Dynamic-Agents-OpenHands.git
+    cd Dynamic-Agents-OpenHands
+fi
+
+# Setup Dynamic Agents
+print_status "Setting up Dynamic Agents..."
+poetry install
+
+# Create extension link
+print_status "Linking Dynamic Agents extension..."
+mkdir -p ../OpenHands/extensions
+ln -sf "$PWD" ../OpenHands/extensions/dynamic-agents
+
+print_success "Installation completed successfully!"
 echo -e "\nAccess points:"
 echo -e "- OpenHands: ${YELLOW}http://localhost:3000${NC}"
 echo -e "- Dynamic Agents Dashboard: ${YELLOW}http://localhost:3000/agents/dashboard${NC}"
-echo -e "\nUseful commands:"
-echo -e "- Start OpenHands: ${YELLOW}cd /opt/openhands/OpenHands && make run${NC}"
-echo -e "- View logs: ${YELLOW}tail -f /opt/openhands/OpenHands/logs/server.log${NC}"
+echo -e "\nTo start OpenHands:"
+echo -e "1. Navigate to OpenHands directory:"
+echo -e "   ${YELLOW}cd /opt/openhands/OpenHands${NC}"
+echo -e "2. Start the server:"
+echo -e "   ${YELLOW}poetry run python -m openhands${NC}"
+echo -e "\nNote: On first run, you'll be prompted for your OpenAI API key"

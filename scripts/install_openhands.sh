@@ -36,6 +36,20 @@ command_exists() {
     command -v "$1" >/dev/null 2>&1
 }
 
+# Function to check Python version
+check_python_version() {
+    if command_exists python3; then
+        python3 --version | cut -d' ' -f2
+    else
+        echo "0"
+    fi
+}
+
+# Function to check if a package is installed
+package_installed() {
+    dpkg -l "$1" &> /dev/null
+}
+
 # Create installation directory
 INSTALL_DIR="/opt/openhands"
 mkdir -p $INSTALL_DIR
@@ -43,19 +57,57 @@ cd $INSTALL_DIR
 
 print_status "Starting OpenHands installation..."
 
-# Update system
-print_status "Updating system packages..."
-apt-get update
-check_success "System packages updated" "Failed to update system packages"
+# Check system requirements
+print_status "Checking system requirements..."
 
-# Install dependencies
-print_status "Installing dependencies..."
-apt-get install -y git python3-pip python3-venv build-essential python3-dev curl python3-wheel bc
-check_success "Dependencies installed" "Failed to install dependencies"
+# List of required packages
+REQUIRED_PACKAGES=(
+    "build-essential"
+    "python3.12"
+    "python3-pip"
+    "python3-venv"
+    "python3-dev"
+    "curl"
+    "python3-wheel"
+    "bc"
+    "git"
+)
+
+# Check and install missing packages
+MISSING_PACKAGES=()
+for pkg in "${REQUIRED_PACKAGES[@]}"; do
+    if ! package_installed "$pkg"; then
+        MISSING_PACKAGES+=("$pkg")
+    fi
+done
+
+# Add Python 3.12 repository if needed
+if [[ " ${MISSING_PACKAGES[@]} " =~ " python3.12 " ]]; then
+    print_status "Adding Python 3.12 repository..."
+    apt-get install -y software-properties-common
+    add-apt-repository -y ppa:deadsnakes/ppa
+fi
+
+if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
+    print_status "Installing missing packages: ${MISSING_PACKAGES[*]}"
+    apt-get update
+    apt-get install -y "${MISSING_PACKAGES[@]}"
+else
+    print_success "All required packages are installed"
+fi
+
+# Check Python version
+PYTHON_VERSION=$(check_python_version)
+if [ "$(printf '%s\n' "3.12" "$PYTHON_VERSION" | sort -V | head -n1)" = "3.12" ]; then
+    print_success "Python version $PYTHON_VERSION is compatible"
+else
+    print_error "Python version $PYTHON_VERSION is not compatible. Version 3.12 is required."
+    exit 1
+fi
 
 # Create and activate virtual environment
 print_status "Creating virtual environment..."
-python3 -m venv /opt/openhands/venv
+python3.12 -m venv /opt/openhands/venv
 source /opt/openhands/venv/bin/activate
 python3 --version  # Verify Python version
 check_success "Virtual environment created" "Failed to create virtual environment"
@@ -175,37 +227,57 @@ check_success "Lock file generated" "Failed to generate lock file"
 poetry install
 check_success "Dynamic-Agents dependencies installed" "Failed to install Dynamic-Agents dependencies"
 
-# Create start script
-print_status "Creating start script..."
-cat > start_dashboard.sh << 'EOL'
-#!/bin/bash
-cd /opt/openhands/Dynamic-Agents-OpenHands
-source .venv/bin/activate
-nohup python3 -c "from openhands_dynamic_agents.dashboard.app import Dashboard; Dashboard(host='0.0.0.0', port=8080).start()" > dashboard.log 2>&1 &
-echo $! > dashboard.pid
-echo "Dashboard started in background. PID: $(cat dashboard.pid)"
-echo "Access the dashboard at http://$(hostname -I | awk '{print $1}'):8080"
-echo "View logs with: tail -f dashboard.log"
+# Create OpenHands configuration
+print_status "Creating OpenHands configuration..."
+cd /opt/openhands/OpenHands
+cat > config.toml << 'EOL'
+[server]
+host = "0.0.0.0"
+port = 3000
+
+[workspace]
+directory = "./workspace"
+
+[llm]
+model = "gpt-4"
+api_key = ""  # Will be prompted during first run
+
+[extensions]
+enabled = ["dynamic-agents"]
+
+[extensions.dynamic-agents]
+route_prefix = "/agents"
+dashboard_route = "/dashboard"
+api_route = "/api"
 EOL
 
-chmod +x start_dashboard.sh
+# Create extension link
+print_status "Creating extension link..."
+mkdir -p extensions
+ln -sf "/opt/openhands/Dynamic-Agents-OpenHands" extensions/dynamic-agents
+
+# Create start script
+print_status "Creating start script..."
+cat > start_server.sh << 'EOL'
+#!/bin/bash
+cd /opt/openhands/OpenHands
+source .venv/bin/activate
+export PYTHONPATH=/opt/openhands/Dynamic-Agents-OpenHands/src:/opt/openhands/OpenHands
+poetry run python -m openhands
+EOL
+
+chmod +x start_server.sh
 check_success "Start script created" "Failed to create start script"
 
 # Create stop script
 print_status "Creating stop script..."
-cat > stop_dashboard.sh << 'EOL'
+cat > stop_server.sh << 'EOL'
 #!/bin/bash
-if [ -f dashboard.pid ]; then
-    PID=$(cat dashboard.pid)
-    kill $PID
-    rm dashboard.pid
-    echo "Dashboard stopped"
-else
-    echo "Dashboard PID file not found"
-fi
+pkill -f "python.*openhands"
+echo "OpenHands server stopped"
 EOL
 
-chmod +x stop_dashboard.sh
+chmod +x stop_server.sh
 check_success "Stop script created" "Failed to create stop script"
 
 # Create test script
@@ -252,37 +324,40 @@ EOL
 
 chmod +x /usr/local/bin/test-openhands
 
-# Start dashboard in detached mode
-print_status "Starting dashboard in detached mode..."
-nohup ./start_dashboard.sh > dashboard.log 2>&1 &
-echo $! > dashboard.pid
-sleep 2  # Wait for dashboard to start
+# Start OpenHands server
+print_status "Starting OpenHands server..."
+cd /opt/openhands/OpenHands
+nohup ./start_server.sh > server.log 2>&1 &
+echo $! > server.pid
+sleep 2  # Wait for server to start
 
 # Print installation summary
 print_success "Installation completed successfully!"
 echo -e "\nInstallation Summary:"
 echo -e "--------------------"
 echo -e "OpenHands: ${GREEN}Installed${NC}"
-echo -e "Dynamic Agents: ${GREEN}Installed${NC}"
-echo -e "Dashboard: ${GREEN}Running (Detached)${NC}"
-echo -e "\nDashboard URL: http://$(hostname -I | awk '{print $1}'):8080"
-echo -e "\nUseful commands:"
-echo -e "- Test OpenHands: ${YELLOW}test-openhands${NC}"
-echo -e "- Start dashboard: ${YELLOW}/opt/openhands/Dynamic-Agents-OpenHands/start_dashboard.sh${NC}"
-echo -e "- Stop dashboard: ${YELLOW}/opt/openhands/Dynamic-Agents-OpenHands/stop_dashboard.sh${NC}"
-echo -e "- View dashboard logs: ${YELLOW}tail -f /opt/openhands/Dynamic-Agents-OpenHands/dashboard.log${NC}"
-echo -e "- Check dashboard status: ${YELLOW}ps aux | grep start_dashboard${NC}"
+echo -e "Dynamic Agents: ${GREEN}Installed (as OpenHands Extension)${NC}"
+echo -e "Server: ${GREEN}Running${NC}"
+echo -e "\nAccess Points:"
+echo -e "- OpenHands UI: ${YELLOW}http://$(hostname -I | awk '{print $1}'):3000${NC}"
+echo -e "- Dynamic Agents Dashboard: ${YELLOW}http://$(hostname -I | awk '{print $1}'):3000/agents/dashboard${NC}"
+echo -e "\nUseful Commands:"
+echo -e "- Start server: ${YELLOW}/opt/openhands/OpenHands/start_server.sh${NC}"
+echo -e "- Stop server: ${YELLOW}/opt/openhands/OpenHands/stop_server.sh${NC}"
+echo -e "- View logs: ${YELLOW}tail -f /opt/openhands/OpenHands/server.log${NC}"
+echo -e "- Test installation: ${YELLOW}test-openhands${NC}"
 
 # Create uninstall script
 cat > uninstall.sh << 'EOL'
 #!/bin/bash
-# Stop the dashboard if running
-if [ -f /opt/openhands/Dynamic-Agents-OpenHands/dashboard.pid ]; then
-    /opt/openhands/Dynamic-Agents-OpenHands/stop_dashboard.sh
+# Stop the server if running
+if [ -f /opt/openhands/OpenHands/server.pid ]; then
+    /opt/openhands/OpenHands/stop_server.sh
 fi
 rm -rf /opt/openhands
-echo "OpenHands and Dynamic Agents uninstalled successfully"
+echo "OpenHands and Dynamic Agents extension uninstalled successfully"
 EOL
 chmod +x uninstall.sh
 
 echo -e "\nTo uninstall everything, run: ${YELLOW}./uninstall.sh${NC}"
+echo -e "\nNote: On first run, you'll be prompted for your OpenAI API key"
