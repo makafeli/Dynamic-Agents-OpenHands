@@ -60,54 +60,49 @@ print_status "Starting OpenHands installation..."
 # Check system requirements
 print_status "Checking system requirements..."
 
-# List of required packages
-REQUIRED_PACKAGES=(
-    "build-essential"
-    "python3.12"
-    "python3-pip"
-    "python3-venv"
-    "python3-dev"
-    "curl"
-    "python3-wheel"
-    "bc"
-    "git"
-)
+# Install required packages for building Python
+print_status "Installing build dependencies..."
+apt-get update
+apt-get install -y build-essential libssl-dev zlib1g-dev \
+libbz2-dev libreadline-dev libsqlite3-dev curl \
+libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
+libffi-dev liblzma-dev git
 
-# Check and install missing packages
-MISSING_PACKAGES=()
-for pkg in "${REQUIRED_PACKAGES[@]}"; do
-    if ! package_installed "$pkg"; then
-        MISSING_PACKAGES+=("$pkg")
-    fi
-done
-
-# Add Python 3.12 repository if needed
-if [[ " ${MISSING_PACKAGES[@]} " =~ " python3.12 " ]]; then
-    print_status "Adding Python 3.12 repository..."
-    apt-get install -y software-properties-common
-    add-apt-repository -y ppa:deadsnakes/ppa
-fi
-
-if [ ${#MISSING_PACKAGES[@]} -ne 0 ]; then
-    print_status "Installing missing packages: ${MISSING_PACKAGES[*]}"
-    apt-get update
-    apt-get install -y "${MISSING_PACKAGES[@]}"
+# Install pyenv
+print_status "Installing pyenv..."
+if [ ! -d "$HOME/.pyenv" ]; then
+    curl https://pyenv.run | bash
+    
+    # Add pyenv to PATH
+    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
+    echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
+    echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+    
+    # Load pyenv in current shell
+    export PYENV_ROOT="$HOME/.pyenv"
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
 else
-    print_success "All required packages are installed"
+    print_success "pyenv is already installed"
 fi
 
-# Check Python version
-PYTHON_VERSION=$(check_python_version)
+# Install Python 3.12 using pyenv
+print_status "Installing Python 3.12..."
+pyenv install -s 3.12.0
+pyenv global 3.12.0
+
+# Verify Python version
+PYTHON_VERSION=$(python3 --version | cut -d' ' -f2)
 if [ "$(printf '%s\n' "3.12" "$PYTHON_VERSION" | sort -V | head -n1)" = "3.12" ]; then
-    print_success "Python version $PYTHON_VERSION is compatible"
+    print_success "Python version $PYTHON_VERSION is installed"
 else
-    print_error "Python version $PYTHON_VERSION is not compatible. Version 3.12 is required."
+    print_error "Failed to install Python 3.12"
     exit 1
 fi
 
 # Create and activate virtual environment
 print_status "Creating virtual environment..."
-python3.12 -m venv /opt/openhands/venv
+python3 -m venv /opt/openhands/venv
 source /opt/openhands/venv/bin/activate
 python3 --version  # Verify Python version
 check_success "Virtual environment created" "Failed to create virtual environment"
@@ -296,10 +291,11 @@ def test_openhands():
     analyzer = TechStackAnalyzer()
     
     print("\n✓ Successfully imported and initialized OpenHands components")
-    print("✓ Dashboard is running at http://localhost:8080")
+    print("✓ OpenHands is running at http://localhost:3000")
+    print("✓ Dynamic Agents Dashboard at http://localhost:3000/agents/dashboard")
     print("\nTo use OpenHands in your code:")
     print("1. Activate the virtual environment:")
-    print("   source /opt/openhands/Dynamic-Agents-OpenHands/.venv/bin/activate")
+    print("   source /opt/openhands/venv/bin/activate")
     print("2. Import OpenHands in your Python code:")
     print("   from openhands_dynamic_agents import DynamicAgent, TechStackAnalyzer")
     print("3. Create an agent:")
